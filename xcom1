@@ -1,0 +1,44 @@
+import json
+from pendulum import datetime, duration
+import requests
+from airflow import DAG
+from airflow.operators.python_operator import PythonOperator
+
+def get_a_cat_fact(ti):
+    """
+    Gets a cat fact from the CatFacts API
+    """
+    ti.xcom_push(key="cat_fact", value="mike")
+
+def analyze_cat_facts(ti):
+    """
+    Prints the cat fact
+    """
+    cat_fact = ti.xcom_pull(key="cat_fact", task_ids="get_a_cat_fact")
+    print("Cat fact for today:", cat_fact)
+    # run some analysis here
+
+dag = DAG(
+    "xcom_dag",
+    start_date=datetime(2021, 1, 1),
+    max_active_runs=2,
+    schedule_interval=duration(minutes=30),
+    default_args={"retries": 1, "retry_delay": duration(minutes=5)},
+    catchup=False,
+)
+
+get_cat_data = PythonOperator(
+    task_id="get_a_cat_fact",
+    python_callable=get_a_cat_fact,
+    provide_context=True,
+    dag=dag
+)
+
+analyze_cat_data = PythonOperator(
+    task_id="analyze_data",
+    python_callable=analyze_cat_facts,
+    provide_context=True,
+    dag=dag
+)
+
+get_cat_data >> analyze_cat_data
