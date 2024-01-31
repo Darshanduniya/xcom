@@ -1,0 +1,28 @@
+from pendulum import datetime, duration
+from airflow import DAG
+from airflow.providers.ssh.operators.ssh import SSHOperator
+
+with DAG(
+    "xcom_dag_ssh",
+    start_date=datetime(2021, 1, 1),
+    max_active_runs=2,
+    schedule_interval=duration(minutes=30),
+    default_args={"retries": 1, "retry_delay": duration(minutes=5)},
+    catchup=False,
+) as dag:
+
+    # Modify SSH connection and command as per your setup and requirements
+    get_cat_data = SSHOperator(
+        task_id="get_a_cat_fact",
+        command='echo "mike"',
+        ssh_conn_id='your_ssh_conn_id',
+    )
+
+    # Modify SSH connection and command as per your setup and requirements
+    analyze_cat_data = SSHOperator(
+        task_id="analyze_data",
+        command=f'echo "Cat fact for today: {{ ti.xcom_pull(task_ids=\'{get_cat_data.task_id}\') }}"',
+        ssh_conn_id='your_ssh_conn_id',
+    )
+
+    get_cat_data >> analyze_cat_data
